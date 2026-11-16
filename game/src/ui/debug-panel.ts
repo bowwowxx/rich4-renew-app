@@ -1,5 +1,5 @@
 /**
- * Hidden debug panel (owner's cheat sheet): tap the GO button 5 times fast to open it.
+ * Hidden debug panel: hold GO's purple frame for 1 s (or tap the frame 5 times in 2 s).
  * Money / points / tools / cards / dice / speed / state flags of the human players, no rebuild needed.
  */
 import type { Game } from '../core/game';
@@ -22,6 +22,7 @@ export class DebugPanel {
   private root: HTMLElement | null = null;
   private open = false;
   private tapTimes: number[] = [];
+  private detachTap: (() => void) | null = null;
   private speedIdx = 0;
 
   constructor(
@@ -30,18 +31,57 @@ export class DebugPanel {
     private refresh: () => void,
   ) {}
 
-  /** The secret trigger: 5 taps on the anchor within 2 s. */
+  /** The frame stays visible while held; GO's centre departs immediately on release. */
   attachTap(target: HTMLElement): void {
-    target.addEventListener('pointerdown', () => {
+    this.detachTap?.();
+    let hold: { id: number; x: number; y: number; timer: ReturnType<typeof setTimeout> } | null = null;
+    const cancelHold = () => {
+      if (hold) clearTimeout(hold.timer);
+      hold = null;
+    };
+    const down = (e: PointerEvent) => {
+      cancelHold();
+      // Dice slots and GO's centre retain their normal actions. Only the purple frame opens DEBUG.
+      if (!e.isPrimary || e.button !== 0 || !(e.target instanceof Element)
+        || e.target.closest('.go-hit, .go-slots')) return;
       const now = Date.now();
       this.tapTimes = this.tapTimes.filter(t => now - t < 2000);
       this.tapTimes.push(now);
       if (this.tapTimes.length >= 5) {
         this.tapTimes = [];
         this.toggle();
+        return;
       }
-    });
+      hold = { id: e.pointerId, x: e.clientX, y: e.clientY, timer: setTimeout(() => {
+        hold = null;
+        this.tapTimes = [];
+        if (target.isConnected && !target.hidden) this.toggle();
+      }, 1000) };
+    };
+    const move = (e: PointerEvent) => {
+      if (hold?.id === e.pointerId && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 8) {
+        cancelHold();
+        this.tapTimes = [];
+      }
+    };
+    const up = (e: PointerEvent) => { if (hold?.id === e.pointerId) cancelHold(); };
+    target.addEventListener('pointerdown', down);
+    target.addEventListener('pointermove', move);
+    target.addEventListener('pointerup', up);
+    target.addEventListener('pointercancel', up);
+    target.addEventListener('lostpointercapture', up);
+    this.detachTap = () => {
+      cancelHold();
+      this.tapTimes = [];
+      target.removeEventListener('pointerdown', down);
+      target.removeEventListener('pointermove', move);
+      target.removeEventListener('pointerup', up);
+      target.removeEventListener('pointercancel', up);
+      target.removeEventListener('lostpointercapture', up);
+    };
   }
+
+  destroy(): void { this.detachTap?.(); this.detachTap = null; this.close(); }
 
   toggle(): void { if (this.open) this.close(); else this.openPanel(); }
   close(): void { this.open = false; this.root?.remove(); this.root = null; }
@@ -101,9 +141,9 @@ export class DebugPanel {
   }
 
   private bind(el: HTMLElement): void {
-    el.querySelector('.dbg-close')!.addEventListener('click', () => this.close());
     el.addEventListener('click', ev => {
       const btn = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
+      if (btn?.classList.contains('dbg-close')) { this.close(); return; }
       if (!btn?.dataset.act) return;
       const i = Number(btn.dataset.p ?? 0);
       const p = this.humans()[i];
@@ -142,7 +182,6 @@ export class DebugPanel {
   private rebuild(): void {
     if (!this.root) return;
     this.root.innerHTML = this.buildHtml();
-    this.bind(this.root);
   }
 
   private pickCard(p: Player): void {

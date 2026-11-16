@@ -31,7 +31,7 @@
 - `game/ios` iOS 工程、`game/android` 安卓工程（Capacitor 7）
 - `game/scripts` 素材連結、打包、安裝到 iPhone
 - `docs/rules` 規則文件
-- `docs/debug-panel.md` 隱藏 debug 面板（快點 GO 5 下開啟的作弊板）
+- `docs/debug-panel.md` 隱藏 debug 面板（長按 GO 紫色外框 1 秒開啟）
 
 ## 執行
 ```bash

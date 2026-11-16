@@ -719,6 +719,7 @@ let bank: SpriteBank | null = null;
 let session = 0;
 let currentView: BoardView | null = null;
 let currentWeather: WeatherFx | null = null;
+let currentDebug: DebugPanel | null = null;
 
 function start(settings: GameSettings, room?: Room) {
   // 派對模式, back after the app closed (issue #50): the game from the room's newest turn, the answers since follow.
@@ -813,6 +814,8 @@ function bootScreen(name: string, thumb: string, what: string, sub = ''): Loadin
 /** `room`: 派對模式 (party-net.ts) — the other phones' seats wait for their answers, this phone's answers are sent. */
 async function begin(mapId: number, make: (board: import('../core/board').Board) => Game, loaded: boolean, ty?: { world: World; flow: ReturnType<World['run']> }, room?: Room) {
   const me = ++session, roomGen = room?.gen;
+  currentDebug?.destroy();
+  currentDebug = null;
   keepAwake(true); // 圍觀, 托管, waiting for the others: the phone does not lock while a game is on screen
   currentView?.destroy();
   currentView = null;
@@ -972,8 +975,9 @@ async function begin(mapId: number, make: (board: import('../core/board').Board)
     const c = view.canvas.getBoundingClientRect(), a = stage.getBoundingClientRect();
     return { x: q.x + c.left - a.left, y: q.y + c.top - a.top, zoom: q.zoom };
   };
-  // Hidden debug panel: 5 fast taps on GO opens it (owner's cheat sheet).
+  // Hold GO's purple frame for 1 s; its centre departs too soon for repeated taps.
   const dbg = new DebugPanel(game, view, () => hud.refresh());
+  currentDebug = dbg;
   dbg.attachTap(go.el);
   // Keep the actor above an open dialog: put the camera point midway in the visible strip — only when the box would
   // cover it (issue #11: a message at the bottom slid the map up and back for every box), and a box closing with the

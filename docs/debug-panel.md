@@ -4,10 +4,12 @@
 
 ## 觸發方式
 
-**快點 GO 按鈕 5 下（2 秒內）** → 右下角浮出半透明小面板。再點面板右上角的 **✕** 收起來。
+**輪到自己時，長按 GO 按鈕的紫色外框約 1 秒** → 右下角浮出半透明小面板。再點面板右上角的 **✕** 收起來。
 
-- 連點 5 下才觸發，所以正常玩（按 GO 擲骰子）不會誤開。
-- 觸發監聽在 GO 按鈕整個外框（`go.el`），不只按鈕本體。
+- 建議按住左下角的紫色外框，不要按中央的 GO 字樣或左邊的骰子。
+- 手指移動超過 8 px 會取消長按，照常拖曳 GO。放開手指或系統取消觸控也會取消計時。
+- 仍可快點紫色外框 5 下（2 秒內）開啟／收起面板。
+- 中央的 GO 照常短按出發，不觸發 debug。舊文件寫「快點 GO 5 下」不夠準確：中央按一次就出發並隱藏，收不到後續連點。
 
 ## 功能
 
@@ -36,6 +38,9 @@
 
   第三參 `refresh` 綁 `hud.refresh()`，讓每次改動後 HUD 的錢/分數數字即時刷新。
 
+- 換局／讀檔時以 `destroy()` 取消長按計時、移除監聽與關閉面板，避免操作到上一局。
+- 面板按鈕使用單一事件委派，刷新內容時不重複註冊；連續加錢／加道具每次只作用一次。
+
 - **遙控骰走原版路徑**：`g.tools.remoteDice = v; g.tools.pending = 'depart'`，跟「遙控骰子」道具（tool 8）同一條核心邏輯，不是亂改 `p.dice`，所以骰子動畫與後續回合流都正確。
 - **速度走 `view.tickMs`**：對應 `main.ts` 的 `speeds` 表（慢 60 / 中 40 / 快 20 / 極快 10 ms），同時寫回 `localStorage.rich4.speed` 讓下次進遊戲保留。
 - **卡片 ID 範圍**：`CARDS`(1-30) + `TYCOON_CARDS`(31-36) + `KB_CARDS`(37-38)，`ALL_CARDS` 合起來供輸入。
@@ -45,7 +50,10 @@
 
 - `npx tsc --noEmit` → 0 error
 - `npm run build` → 成功
-- `npm run test` → 279 過；7 個 fail 全是 `ENOENT: editor/site/assets/map-*.json`（原本就缺的 map 資源，需 `npm run assets`），與本批改動無關
+- `game/scripts/debug-panel-e2e.cjs` → Chromium 觸控輸入、WebKit 均通過：短按外框不誤開、拖曳取消長按、長按開啟不擲骰、連續加錢每次只作用一次、五連點外框仍有效、GO 中央正常出發。Chromium 另驗證系統取消觸控不會誤開。兩個引擎皆無頁面錯誤。
+- iOS Debug build → 使用 `DEVELOPMENT_TEAM=9UWMM279TK` 覆蓋簽名成功。
+- iPhone 實機 → 使用者確認長按入口測試正常。
+- 面板最初加入時的全套測試紀錄：`npm run test` → 279 過；7 個 fail 全是 `ENOENT: editor/site/assets/map-*.json`（原本就缺的 map 資源）。此次以建置與上述操作回歸驗證長按修正。
 
 ## 後續可加的作弊（待做）
 
